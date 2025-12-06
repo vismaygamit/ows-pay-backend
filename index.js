@@ -4,7 +4,7 @@ import aiRoutes from "./src/routes/expeditionAIRoutes.js";
 
 const app = express();
 const corsOptions = {
-    origin: ["https://pay.openwatersyndicate.com", "https://31.97.144.251:3001"], // Allow multiple origins
+    origin: ["https://pay.openwatersyndicate.com", "http://localhost:5173"], // Allow multiple origins
     optionsSuccessStatus: 200 // For legacy browsers
 };
 // Enable CORS for all routes

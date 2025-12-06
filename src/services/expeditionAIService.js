@@ -10,18 +10,21 @@ export const parseExpenseDetailsService = async (text, members) => {
         const model = "gemini-2.5-flash";
         const memberMap = members.map(m => ({ id: m.id, name: m.name })).join(", ");
 
-        const prompt = `Analyze this expense text: "${text}"
+        const prompt = `
+      Analyze this expense text: "${text}"
+      
+      Context Members: [${memberMap}]
+      
+      Task:
+      1. Extract a short description.
+      2. Extract the amount if present.
+      3. Categorize into: Food & Drink, Transportation, Accommodation, Equipment, Activities, Other.
+      4. Identify which members are involved based on names mentioned. If 'everyone' or 'all' or no specific names are mentioned, include everyone.
+      5. Suggest a split method (usually EQUAL).
+      
+      Return JSON with keys: description, amount, category, involvedMemberIds (array of matched IDs), splitMethod.
+    `;
 
-Context Members: [${memberMap}]
-
-Task:
-1. Extract a short description.
-2. Extract the amount.
-3. Categorize: Food & Drink, Transportation, Accommodation, Equipment, Activities, Other.
-4. Identify members mentioned.
-5. Suggest a split method.
-
-Return JSON.`;
         const CATEGORY_ICONS = {
             FOOD: "🍔",
             TRANSPORT: "🚗",
@@ -74,19 +77,29 @@ export const getExpeditionAssistantResponseService = async (query, expedition) =
         const expenseSummary = expedition.expenses.map(e => `${e.description}: $${e.amount} (${e.category})`).join("\n");
         const equipmentSummary = expedition.equipment.map(e => `${e.name} (${e.isPacked ? 'Packed' : 'Not Packed'})`).join(", ");
 
-        const context = `You are the ExpeditionPay AI Assistant.
-
-Expedition: ${expedition.name}
-Members: ${memberNames}
-Total Cost: $${totalCost}
-
-Expenses:
-${expenseSummary}
-
-Equipment:
-${equipmentSummary}
-
-User Query: "${query}"`;
+        const context = `
+      You are the ExpeditionPay AI Assistant. A helpful, rugged, and smart outdoor guide and accountant.
+      
+      CURRENT EXPEDITION DATA:
+      Name: "${expedition.name}"
+      Description: "${expedition.description}"
+      Members: ${memberNames}
+      Total Cost So Far: $${totalCost.toFixed(2)}
+      
+      EXPENSES LOG:
+      ${expenseSummary}
+      
+      EQUIPMENT LIST:
+      ${equipmentSummary}
+      
+      USER QUERY: "${query}"
+      
+      INSTRUCTIONS:
+      1. If asked about costs, analyze the Expenses Log. Tell who spent what if asked.
+      2. If asked about gear, analyze the Equipment List. Suggest missing items based on the trip description (e.g. if hiking, suggest boots).
+      3. If asked about settling debts, explain generally that the 'Settlement' tab handles the math, but you can give a rough estimate.
+      4. Be concise. Use emojis relevant to outdoors/finance.
+    `;
 
         const response = await ai.models.generateContent({ model, contents: context, config: { temperature: 0.7 } });
         return response.text?.trim() || "I couldn't process that request.";
